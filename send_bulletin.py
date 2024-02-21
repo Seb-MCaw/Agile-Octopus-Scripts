@@ -222,8 +222,6 @@ def send_email(subj, body, attachments={}):
 	attachments should be a dictionary where each key is the name of a file
 	(as a string) and the corresponding value is a bytes containing the file
 	data. MIME types are guessed from the file extension.
-
-	The subject line will be 'Agile Octopus Bulletin ({date})'.
 	"""
 	msg = email.message.EmailMessage()
 	msg.set_content(body)

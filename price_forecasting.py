@@ -1,8 +1,8 @@
 """
 Produce a rough forecast for the unit prices on Octopus Energy's Agile tariff.
 
-The forecast is based only on the previous day's prices and the national
-grid's forecast for national demand and wind generation.
+The forecast is based only on the previous day's prices and the National
+Grid's forecast for national demand and wind generation.
 
 The model must be trained on past data with the train_price_forecast script
 before any new forecasts are generated. This package currently provides no

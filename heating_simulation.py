@@ -125,7 +125,7 @@ class Building:
 		# relating the derivatives of the simulated temperatures (T,Q,S) to
 		# themselves (the inhomogeneous part is dealt with later). In other
 		# words, if the system of equations is written in vector form as
-		# dA/dt = MB + C + Dt, for vectors A,B,C,D, we calculate and diagonalise
+		# dA/dt = MA + B + Ct, for vectors A,B,C, we calculate and diagonalise
 		# the matrix M. The rows of the vectors are ordered T, Q, S.
 		self._ode_matrices = {
 			# The free evolution of the system (i.e. the combination of eqs (1)
@@ -209,7 +209,7 @@ class Building:
 		# Create a list of all expected discontinuities and relevant time boundaries.
 		# The intervals between these can be solved analytically as a single step.
 		#
-		# Specifically, this list consists of all space and storage heating
+		# Specifically, this list consists of all direct and storage heating
 		# switch-on and switch-off events, all changes in the minimum temperature
 		# and all hours and half-hours (since half-hourly usage is returned)
 		# between start_t and end_t.
@@ -291,8 +291,6 @@ class Building:
 		I(t) and P(t) are constant, except that I is reduced if necessary to
 		keep the storage heater at or below its maximum temperature. A(t) is
 		linearly interpolated from the temperatures provided.
-
-		t_interval must not straddle one of the temperature values.
 
 		Arguments:
 		  t_interval    A 2-tuple containing the time (in hours) at which this
@@ -436,9 +434,7 @@ class Building:
 			T, Q, S = self._solve_eqns(t_vals, init_vals, "equalised", U, V, P, I)
 			# If T ever rises above min_temp, terminate this step at that time
 			# and (recursively) treat the remainder of the t_interval as a new
-			# step (but ignore the occasional floating point error that gives
-			# T[0] > initial_T). Otherwise just return the full simulated
-			# temperatures.
+			# step. Otherwise just return the full simulated temperatures.
 			termination_condition = T > min_temp
 
 		elif initial_T <= min_temp and initial_T < initial_S and eq3_initial_RHS - I <= 0:

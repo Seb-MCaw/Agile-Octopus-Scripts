@@ -83,8 +83,8 @@ CONDUCTANCE_TO_OUTDOORS = 0.1
 SLOW_HEAT_CAPACITY = 5
 SLOW_CONDUCTANCE = 1
 
-# The third component is a storage heater, which can store the heat from
-# internally during user-determined hours and release it on demand.
+# The third component is a storage heater, which can store heat internally
+# during user-determined hours and release it on demand.
 # Its behaviour is parametrised as follows:
 #
 # Total capacity of fully charged storage heater in kWh

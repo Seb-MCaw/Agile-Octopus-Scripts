@@ -3,7 +3,7 @@ Fetch, store and retrieve data from various APIs.
 
 Implements the price and consumption APIs from Octopus Energy, temperature
 forecasts from the MetOffice, and half-hourly demand and wind generation
-forecasts from the national grid.
+forecasts from the National Grid.
 
 Data is stored in csv files in locations defined in the config module.
 

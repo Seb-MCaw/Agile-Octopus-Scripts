@@ -21,7 +21,7 @@ if __name__ == "__main__":
 	num_epochs = int(input("Enter number of training epochs per run: "))
 
 	# Update the csv files if necessary
-	data.update_agile_prices()
+	data.update_agile_prices(wait=False)
 	data.update_nat_grid_demand_forecast()
 	data.update_nat_grid_wind_forecast()
 
@@ -53,7 +53,7 @@ if __name__ == "__main__":
 	# Construct and train the model (multiple times if requested)
 	model = price_forecasting.construct_forecast_model()
 	print("\nTraining model...")
-	print(f"\r{1}/{num_runs}: 0.00%")
+	print(f"\r{1}/{num_runs}:   0.00%", end="")
 	results = []
 	for i in range(num_runs):
 		model_for_this_run = keras.models.clone_model(model)

@@ -253,7 +253,7 @@ if __name__ == "__main__":
 			+ f"\n    Costs {costs_str}£{opt['marginal_price']/100:.2f} "
 			+ f"({opt['marginal_price'] / marg_usfl_enrgy:.2f}p "
 			+ f"per useful kWh)."
-			+ f"\n    Run the storage heater for: {sh_string}"
+			+ f"\n    Charge the storage heater for: {sh_string}"
 			+ f"\n    Run direct heating at: {dh_string}"
 			+ f"\n    Total energy: {opt['total_energy']:.1f}kWh"
 		)

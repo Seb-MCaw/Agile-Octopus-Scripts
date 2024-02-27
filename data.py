@@ -234,11 +234,11 @@ def get_agile_prices():
 	# Return the prices
 	return [p for _, p in data]
 
-def update_agile_prices():
+def update_agile_prices(wait=True):
 	"""
 	Fetch and store tonight's unit prices for Octopus Energy's Agile tariff.
 
-	Blocks until the prices are available.
+	If wait is True, blocks until the prices are available.
 	"""
 	start_time = misc.midnight_tonight() - datetime.timedelta(hours=1)
 	start_time_utc = start_time.astimezone(datetime.timezone.utc)
@@ -250,7 +250,7 @@ def update_agile_prices():
 		+ f"standard-unit-rates?period_from={period_from_str}"
 	)
 	response = json.loads(urllib.request.urlopen(api_request_url).read())
-	while response["count"] == 0:
+	while wait and response["count"] == 0:
 		# Wait 10mins and try again
 		time.sleep(10 * 60)
 		response = json.loads(urllib.request.urlopen(api_request_url).read())

@@ -70,11 +70,10 @@ def update_temperature_forecast():
 	lat, long = config.LATITUDE, config.LONGITUDE
 	# Get hourly Met Office forecast.
 	request = urllib.request.Request(
-		"https://api-metoffice.apiconnect.ibmcloud.com/v0/forecasts/point/hourly"
+		"https://data.hub.api.metoffice.gov.uk/sitespecific/v0/point/hourly"
 			+ f"?includeLocationName=true&latitude={lat}&longitude={long}",
 		headers={
-			"X-IBM-Client-Id" : config.METOFFICE_CLIENT_ID,
-			"X-IBM-Client-Secret" : config.METOFFICE_CLIENT_SECRET
+			"apikey" : config.METOFFICE_API_KEY
 		}
 	)
 	with urllib.request.urlopen(request) as f:
@@ -91,11 +90,10 @@ def update_temperature_forecast():
 	# Get 3-hourly Met Office forecast and append it to the hourly forecast;
 	# this is less detailed but extends further into the future.
 	request = urllib.request.Request(
-		"https://api-metoffice.apiconnect.ibmcloud.com/v0/forecasts/point/three-hourly"
+		"https://data.hub.api.metoffice.gov.uk/sitespecific/v0/point/three-hourly"
 			+ f"?includeLocationName=true&latitude={lat}&longitude={long}",
 		headers={
-			"X-IBM-Client-Id" : config.METOFFICE_CLIENT_ID,
-			"X-IBM-Client-Secret" : config.METOFFICE_CLIENT_SECRET
+			"apikey" : config.METOFFICE_API_KEY
 		}
 	)
 	with urllib.request.urlopen(request) as f:

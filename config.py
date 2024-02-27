@@ -28,9 +28,9 @@ FORECAST_MODEL_FILE = "forecast_model.keras"
 # The datetime format to use in these csv files
 FILE_DATETIME_FORMAT = r"%Y-%m-%dT%H:%M:%SZ"
 
-# MetOffice DataHub API information
-METOFFICE_CLIENT_ID = "<insert ID>"
-METOFFICE_CLIENT_SECRET = "<insert key>"
+# API key for the Site Specific Global Spot subscription on MetOffice DataHub
+# (the free plan is sufficient)
+METOFFICE_API_KEY = "<insert key>"
 
 
 

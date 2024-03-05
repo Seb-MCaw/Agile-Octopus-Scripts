@@ -40,40 +40,43 @@ def construct_forecast_model():
 	# period entirely separately.
 
 	# The branch which mixes all values together:
-	mixed_branch_inputs = keras.Input((17,))
+	mixed_branch_inp = keras.Input((62,))
 	# Dense layers with final output duplicated to give shape (48, 4)
-	mixed_branch_0 = keras.layers.Dense(10, activation="PReLU")(mixed_branch_inputs)
-	mixed_branch_1 = keras.layers.Dense(4, activation="tanh")(mixed_branch_0)
-	mixed_branch_3 = keras.layers.RepeatVector(48)(mixed_branch_1)
+	mixed_branch_0 = keras.layers.Dense(32, activation="PReLU")(mixed_branch_inp)
+	mixed_branch_1 = keras.layers.Dense(16, activation="PReLU")(mixed_branch_0)
+	mixed_branch_2 = keras.layers.Dense(8, activation="PReLU")(mixed_branch_1)
+	mixed_branch_3 = keras.layers.RepeatVector(48)(mixed_branch_2)
 
 	# The branch which keeps times separate (matrix multiplication only on
 	# second axis):
-	unmxd_branch_inputs = keras.Input((48, 2))
-	unmxd_branch_0 = keras.layers.Dense(8)(unmxd_branch_inputs)
+	unmxd_branch_inp = keras.Input((48, 2))
+	unmxd_branch_0 = keras.layers.Dense(8)(unmxd_branch_inp)
 	unmxd_branch_1 = keras.layers.Activation("PReLU")(unmxd_branch_0)
 	unmxd_branch_2 = keras.layers.Dense(4)(unmxd_branch_1)
-	unmxd_branch_3 = keras.layers.Activation("tanh")(unmxd_branch_2)
+	unmxd_branch_3 = keras.layers.Activation("PReLU")(unmxd_branch_2)
 
 	# Combine the two branches to produce the output
 	cmbnd_0 = keras.layers.Concatenate()([mixed_branch_3, unmxd_branch_3])
-	cmbnd_1 = ParallelDenseLayer(48, 8, 8)(cmbnd_0)
-	cmbnd_2 = keras.layers.Activation("tanh")(cmbnd_1)
-	cmbnd_3 = ParallelDenseLayer(48, 8, 1)(cmbnd_2)
-	output = keras.layers.Flatten()(cmbnd_3)
+	cmbnd_1 = ParallelDenseLayer(48, 12, 8)(cmbnd_0)
+	cmbnd_2 = keras.layers.Activation("PReLU")(cmbnd_1)
+	cmbnd_3 = ParallelDenseLayer(48, 8, 8)(cmbnd_2)
+	cmbnd_4 = keras.layers.Activation("PReLU")(cmbnd_3)
+	cmbnd_5 = ParallelDenseLayer(48, 8, 1)(cmbnd_4)
+	output = keras.layers.Flatten()(cmbnd_5)
 
-	return keras.Model(inputs=[mixed_branch_inputs, unmxd_branch_inputs], outputs=output)
+	return keras.Model(inputs=[mixed_branch_inp, unmxd_branch_inp], outputs=output)
 
 def loss_func(true_val, pred_val):
 	"""
 	A custom loss function for training the model.
 
-	Returns the mean square error in the prices (in pence) except that the
+	Returns the mean absolute error in the prices (in pence) except that the
 	error in prices correctly forecast as <= 0 is reduced by a factor of 10.
 	Such prices are more erratic, and the exact value rarely matters, only
 	the fact that they are <= 0 (and thus one can never use too much).
 	"""
 	negative_err_factor = 0.1
-	return tf.reduce_mean(tf.square(tf.where(
+	return tf.reduce_mean(tf.abs(tf.where(
 		tf.logical_and(true_val <= 0, pred_val <= 0),
 		(true_val - pred_val) * negative_err_factor,
 		true_val - pred_val,
@@ -182,9 +185,9 @@ def get_model_input(date, demand_data, wind_data, price_data):
 
 	# Create and return the actual input arrays
 	input_0 = np.array(
-		  [np.mean( demand_vals[16*i : 16*(i+1)]) for i in range(6)]
-		+ [np.mean(   wind_vals[16*i : 16*(i+1)]) for i in range(6)]
-		+ [np.mean(prior_prices[16*i : 16*(i+1)]) for i in range(3)]
+		  [np.mean( demand_vals[4*i : 4*(i+1)]) for i in range(24)]
+		+ [np.mean(   wind_vals[4*i : 4*(i+1)]) for i in range(24)]
+		+ [np.mean(prior_prices[4*i : 4*(i+1)]) for i in range(12)]
 		+ [date.weekday(), day_num]
 	)
 	input_1 = np.transpose([demand_vals[48:96], wind_vals[48:96]])
@@ -294,10 +297,16 @@ def gen_price_forecast():
 			# We don't have enough data to produce a forecast for this day
 			# (and therefore won't for any subsequent days)
 			break
-		frcst_prices = list(model.predict(
-			[np.array([inputs[0]]), np.array([inputs[1]])],
-			verbose=0
-		)[0])
+		try:
+			frcst_prices = list(model.predict(
+				[np.array([inputs[0]]), np.array([inputs[1]])],
+				verbose=0
+			)[0])
+		except ValueError:
+			# The model encountered an error (e.g. get_model_input() has
+			# changed since the model was trained), so terminate and return
+			# any forecast we've already managed to generate.
+			break
 		frcst_times = [
 			(
 				datetime.datetime.combine(
@@ -336,28 +345,3 @@ def gen_price_forecast():
 		for time, price in zip(frcst_times, frcst_prices):
 			prices[time] = price
 	return {t:prices[t] for t in prices if t > last_known_price_time}
-
-
-
-class ProgressPrintCallback(keras.callbacks.Callback):
-	"""
-	A training callback which prints the epoch number as a percentage to stdout.
-
-	Also shows validation loss. Both values are preceeded by the static string
-	specified by pre_str.
-	"""
-
-	def __init__(self, num_epochs, pre_str=""):
-		self.num_epochs, self.pre_str = num_epochs, pre_str
-
-	def on_epoch_end(self, epoch, logs=None):
-		progress_percent = 100 * (epoch+1) / self.num_epochs
-		print(f"\r{self.pre_str}{progress_percent:>6.2f}%", end="")
-		if logs is not None and "val_loss" in logs:
-			print(
-				(
-					f"    validation loss (rms error): "
-					+ f"{np.sqrt(logs['val_loss']):>6.2f}"
-				),
-				end=""
-			)

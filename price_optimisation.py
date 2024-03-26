@@ -132,7 +132,9 @@ def cheapest_heat(building, temp_ranges, init_vals, dh_max_pow, other_heat,
 	For the cheapest heating scheme found, returns:
 	  storage_heat      The storage_heat argument to building.simulate_heat()
 	  direct_heat       The direct_heat argument to building.simulate_heat()
-	  cost              The cost of the heating scheme in pence
+	  tot_energy        The total energy actually used by storage_heat and
+	                    direct_heat
+	  cost              The cost of this energy in pence
 	  actual_end_t      The t value until which acceptable temperatures are
 	                    actually maintained.
 	  sim_temps         A tuple of (t, T, Q, S) arrays containing the results
@@ -187,7 +189,7 @@ def cheapest_heat(building, temp_ranges, init_vals, dh_max_pow, other_heat,
 	cost = _energy_cost(prices, usage)
 	actual_end_t = _first_deviation_from_acceptable(t, T, temp_ranges)
 
-	return storage_heat, direct_heat, cost, actual_end_t, (t, T, Q, S)
+	return storage_heat, direct_heat, sum(usage), cost, actual_end_t, (t, T, Q, S)
 
 def _cheapest_heat_cost_func(s, building, temp_ranges, init_vals, other_heat,
                              outdoor_temps, prices, end_t, penalty_per_heat):

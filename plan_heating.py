@@ -8,6 +8,7 @@ The building and optimisation parameters are speecified in config.py.
 
 import datetime
 import warnings
+import re
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -105,31 +106,26 @@ def heating_options(
 	for i, end_time in enumerate(end_times):
 		end_t = (end_time - start_time) / datetime.timedelta(hours=1)
 		# Perform the optimisation
-		s_heat, d_heat, cost, act_end_t, sim_temps = price_optimisation.cheapest_heat(
+		s_heat, d_heat, tot_energy, cost, act_end_t, sim_temps = (
+		price_optimisation.cheapest_heat(
 			building,
 			temp_ranges,
 			(0, start_indoor_temp),
 			config.DIRECT_HEATING_POWER,
-			[(0, num_hours, config.OTHER_HEAT_OUTPUT/24)],
+			[(0, np.inf, config.OTHER_HEAT_OUTPUT/24)],
 			outdoor_temps,
 			prices,
 			end_t,
 			num_heats,
 			config.HEATING_PERIOD_PENALTY
-		)
+		))
 		t, T, Q, S = sim_temps
-		# Calculate total energy
-		tot_energy = 0
-		for s, e in s_heat:
-			tot_energy += building.sh_charge_pwr * (e - s)
-		for s, e, p in d_heat:
-			tot_energy += p * (e - s)
 		# Calculate useful energy
 		useful_energy = price_optimisation.useful_heat_energy(
 			building,
 			temp_ranges,
 			(0, start_indoor_temp),
-			[(0, num_hours, config.OTHER_HEAT_OUTPUT/24)],
+			[(0, np.inf, config.OTHER_HEAT_OUTPUT/24)],
 			outdoor_temps,
 			end_t
 		)
@@ -183,9 +179,13 @@ if __name__ == "__main__":
 	initial_indoor_temp = float(input(
 		"Enter initial indoor temperature (\N{DEGREE SIGN}C):" + 22 * " "
 	))
-	max_days_to_last = int(input(
-		"Enter maximum number of days heating should last for:       "
-	))
+	heat_lengths = input(
+		"Times to heat until (days after 00:00 tonight):             "
+	)
+	heat_lengths = [
+		float(l) for l in re.split(r"[^0-9]+", heat_lengths)
+		if l != ""
+	]
 	max_num_heats = int(input(
 		"Enter maximum number of times to run each type of heating:  "
 	))
@@ -195,9 +195,9 @@ if __name__ == "__main__":
 	data.update_temperature_forecast()
 	outdoor_temps = list(data.get_hourly_temperatures(start_time))
 	# Prompt if temperature forecast isn't long enough
-	num_missing_temps = 24*max_days_to_last - len(outdoor_temps)
+	num_missing_temps = int(np.ceil(24*max(heat_lengths))) - len(outdoor_temps)
 	num_missing_temps += 1  # (fencepost)
-	num_missing_temps += 1  # (start at 23:00, finish at 00:00)
+	num_missing_temps += 1  # (starts at 23:00, i.e. 1hr before midnight)
 	if num_missing_temps > 0:
 		print(
 			  "\nThe temperature forecast does not last long enough to simulate "
@@ -223,8 +223,8 @@ if __name__ == "__main__":
 	# Perform the optimisation
 	print("\nCalculating options:")
 	end_times = [
-		misc.midnight_tonight() + datetime.timedelta(days=n)
-		for n in range(1, 1 + max_days_to_last)
+		misc.midnight_tonight() + datetime.timedelta(days=x)
+		for x in heat_lengths
 	]
 	options = heating_options(
 		outdoor_temps, start_time, initial_indoor_temp,
@@ -268,3 +268,5 @@ if __name__ == "__main__":
 	plt.ylabel("Temperature (\N{DEGREE SIGN}C)")
 	plt.legend()
 	plt.show()
+
+	print()

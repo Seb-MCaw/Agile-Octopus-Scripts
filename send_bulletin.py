@@ -33,19 +33,18 @@ def prices_list(prices):
 
 	prices should be the list returned by data.get_agile_prices().
 	"""
-	output_string = ""
-	start_time = misc.midnight_tonight() - datetime.timedelta(hours=1)
-	for i, price in enumerate(prices):
+	output_str = ""
+	start_time = misc.midnight_tonight(local=True) - datetime.timedelta(hours=1)
+	for price, time in zip(prices, misc.datetime_sequence(start_time, 0.5)):
 		if price == 0:
 			graphical_price = ""
 		elif price >= 0:
 			graphical_price = '+'*(1 + int(20*np.log(1+0.1*price)))
 		else:
 			graphical_price = '-'*(1 + int(20*np.log(1-0.1*price)))
-		time = start_time + datetime.timedelta(hours=i/2)
-		output_string += f"{time.strftime('%H:%M')}"
-		output_string += f"    {price:>5.2f}    {graphical_price}\n"
-	return output_string
+		output_str += f"{time.strftime('%H:%M')}    "
+		output_str += f"{price:>5.2f}    {graphical_price}\n"
+	return output_str
 
 def consumption_paragraph():
 	"""
@@ -58,27 +57,36 @@ def consumption_paragraph():
 	come through).
 	"""
 	output_string = ""
-	# Calculate the relevant datetimes
-	midnight_this_morning = misc.midnight_tonight() - datetime.timedelta(days=1)
+	one_day = datetime.timedelta(days=1)
+	midnight_this_morning = misc.midnight_tonight(local=True) - one_day
+	# Calculate the datetimes corresponding to the start of each period.
+	yesterday_morning = midnight_this_morning - one_day
 	today_weekday = midnight_this_morning.weekday()
+	monday_morning = midnight_this_morning - one_day * (1 + (today_weekday-1)%7)
 	if midnight_this_morning.day > config.OCTOPUS_BILL_DAY:
-		# The bill started on OCTOPUS_BILL_DAY this month
+		# The current bill started on OCTOPUS_BILL_DAY this month
 		bill_start = midnight_this_morning.replace(day=config.OCTOPUS_BILL_DAY)
 	else:
-		# The bill started on OCTOPUS_BILL_DAY last month
+		# The current bill started on OCTOPUS_BILL_DAY last month
 		bill_start = (
-			midnight_this_morning.replace(day=1) - datetime.timedelta(days=1)
+			midnight_this_morning.replace(day=1) - one_day
 		).replace(day=config.OCTOPUS_BILL_DAY)
+	jan_bill_start = bill_start.replace(month=1)
 	tariff_start_date = datetime.datetime.strptime(
 		config.OCTOPUS_AGILE_JOIN_DATE,
 		r"%Y-%m-%d"
 	).replace(tzinfo=zoneinfo.ZoneInfo(config.TIME_ZONE))
+	# Handle recently started tariff
+	yesterday_morning = max(tariff_start_date, yesterday_morning)
+	monday_morning = max(tariff_start_date, monday_morning)
+	bill_start = max(tariff_start_date, bill_start)
+	jan_bill_start = max(tariff_start_date, jan_bill_start)
 	# Calculate the consumption for each time period
 	periods = [
-		(midnight_this_morning - datetime.timedelta(days=1), "Yesterday"),
-		(midnight_this_morning - datetime.timedelta(days=(today_weekday-1)%7+1), "Since Monday"),
+		(yesterday_morning, "Yesterday"),
+		(monday_morning, "Since Monday"),
 		(bill_start, "Since last bill"),
-		(max(tariff_start_date, bill_start.replace(month=1)), "Since January bill"),
+		(jan_bill_start, "Since January bill"),
 		(tariff_start_date, "All time")
 	]
 	for period_start, period_name in periods:
@@ -99,7 +107,7 @@ def cheapest_window_paragraph(prices):
 	prices should be a chronological list of half-hourly unit prices starting
 	at 23:00 tonight.
 	"""
-	prices_start = misc.midnight_tonight() - datetime.timedelta(hours=1)
+	prices_start = misc.midnight_tonight(True) - datetime.timedelta(hours=1)
 	paragraph = ""
 	for window_length in (.5, 1, 1.5, 2, 2.5, 3, 4, 6):
 		start, avg_price = price_optimisation.cheapest_window(
@@ -124,12 +132,13 @@ def plot_prices(agile_prices, price_forecast=None, tom_min_max=False, format="pn
 	of data.get_agile_prices() and price_forecasting.gen_price_forecast()
 	respectively.
 
-	Horizontal lines showing the minimum and maximum of tomorrows prices are
+	Horizontal lines showing the minimum and maximum of tomorrow's prices are
 	shown if tom_min_max is True.
 
 	format is passed as a keyword argument to the matplotlib.pyplot.Figure.savefig()
 	method.
 	"""
+	one_hour = datetime.timedelta(hours=1)
 	zero_hour = misc.midnight_tonight()
 	# Create the figure
 	fig = plt.figure()
@@ -144,7 +153,7 @@ def plot_prices(agile_prices, price_forecast=None, tom_min_max=False, format="pn
 	# Plot tomorrow's prices with constant values apart from a discontinuous
 	# jump at the boundaries between settlement periods
 	times_in_hrs = np.array([n/2 - 1 for n in range(len(agile_prices))])
-	times = [zero_hour + datetime.timedelta(hours=h) for h in times_in_hrs]
+	times = [zero_hour + x * one_hour for x in times_in_hrs]
 	ax.plot(
 		np.array(list(zip(times_in_hrs, times_in_hrs + 0.5))).flatten(),
 		np.repeat(agile_prices, 2),
@@ -159,13 +168,18 @@ def plot_prices(agile_prices, price_forecast=None, tom_min_max=False, format="pn
 		x_tick_interval = 4
 		x_tick_format = r"%H:%M"
 	else:
+		# Ensure times are entirely UTC
+		price_forecast = {
+			t.astimezone(datetime.timezone.utc) : price_forecast[t]
+			for t in price_forecast
+		}
 		# Plot the price forecast if given
 		times = []
 		for t in sorted(price_forecast.keys()):
-			if len(times) == 0 or t - times[-1] == datetime.timedelta(minutes=30):
+			if len(times) == 0 or t - times[-1] == 0.5 * one_hour:
 				times.append(t)
 		times_in_hrs = np.array([
-			(t-zero_hour) / datetime.timedelta(hours=1) for t in times
+			(t-zero_hour) / one_hour for t in times
 		])
 		ax.plot(
 			np.array(list(zip(times_in_hrs, times_in_hrs + 0.5))).flatten(),
@@ -184,13 +198,17 @@ def plot_prices(agile_prices, price_forecast=None, tom_min_max=False, format="pn
 		])
 	# Handle xticks (such that they occur at the same clock hours even when
 	# there's a daylight savings switchover)
+	local_zero_hour = zero_hour.astimezone(zoneinfo.ZoneInfo(config.TIME_ZONE))
+	x_tick_times = [
+		t for t in misc.datetime_sequence(local_zero_hour, 1, max_x+1)
+		if t.hour % x_tick_interval == 0
+	]
 	x_tick_hrs = [
-		n for n in range(max_x+1)
-		if (zero_hour + datetime.timedelta(hours=n)).hour % x_tick_interval == 0
+		(t.astimezone(datetime.timezone.utc) - zero_hour) / one_hour
+		for t in x_tick_times
 	]
 	x_tick_labels = [
-		(zero_hour + datetime.timedelta(hours=n)).strftime(x_tick_format)
-		for n in x_tick_hrs
+		t.strftime(x_tick_format) for t in x_tick_times
 	]
 	if price_forecast is not None:
 		# Omit last label when plotting 8 days

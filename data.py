@@ -37,6 +37,7 @@ def get_hourly_temperatures(start_time):
 
 	Throws an exception if no forecast is available for start_time.
 	"""
+	start_time = start_time.astimezone(datetime.timezone.utc)
 	# Get the data from the csv
 	data_dict = load_csv_time_series(
 		os.path.join(config.DATA_DIRECTORY, config.TEMPERATURE_FILE),
@@ -239,8 +240,7 @@ def update_agile_prices(wait=True):
 	If wait is True, blocks until the prices are available.
 	"""
 	start_time = misc.midnight_tonight() - datetime.timedelta(hours=1)
-	start_time_utc = start_time.astimezone(datetime.timezone.utc)
-	period_from_str = start_time_utc.strftime(r"%Y-%m-%dT%H:%M:%SZ")
+	period_from_str = start_time.strftime(r"%Y-%m-%dT%H:%M:%SZ")
 	api_request_url = (
 		"https://api.octopus.energy/v1/products/AGILE-FLEX-BB-23-02-08/"
 		+ "electricity-tariffs/"

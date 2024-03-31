@@ -4,6 +4,7 @@ Optimise electricity usage to minimise cost on Octopus Energy's agile tariff.
 
 
 import datetime
+import zoneinfo
 
 import numpy as np
 import scipy.optimize
@@ -21,12 +22,16 @@ def cheapest_window(length, prices):
 	of the window in hours.
 
 	prices should be a dictionary with the start of each settlement period
-	(datetime.datetime) as keys and the corresponding unit prices as values.
+	(timezone aware datetime.datetime) as keys and the corresponding unit
+	prices as values.
 
 	Returns None if prices contains no valid windows of the required length.
 
 	Later windows are preferred in the event of a tie.
 	"""
+	# Convert all times to UTC
+	arg_times = {t.astimezone(datetime.timezone.utc) : t for t in prices}
+	prices = {t.astimezone(datetime.timezone.utc) : prices[t] for t in prices}
 	# Convert length to units of half-hours
 	length = int(2*length)
 	# Try every start time to find the cheapest
@@ -44,7 +49,7 @@ def cheapest_window(length, prices):
 			if best_average_price is None or avg_price <= best_average_price:
 				best_average_price = avg_price
 				best_start_time = start_time
-	return best_start_time, best_average_price
+	return arg_times[best_start_time], best_average_price
 
 
 
@@ -56,19 +61,24 @@ def temp_ranges_from_config(start_datetime, start_t, end_t):
 
 	The simulation should start at t=start_t and run until t=end_t.
 
-	start_hour specifies the time (datetime.datetime) to which t=start_t in
-	the simulation corresponds.
+	start_datetime specifies the time (timezone aware datetime.datetime) to
+	which t=start_t in the simulation corresponds.
 	"""
+	hr = datetime.timedelta(hours=1)
+	UTC = datetime.timezone.utc
+	local_tz = zoneinfo.ZoneInfo(config.TIME_ZONE)
+	start_datetime_UTC = start_datetime.astimezone(UTC)
+	start_datetime_lcl = start_datetime.astimezone(local_tz)
+	start_date_mdnght = start_datetime_lcl.replace(hour=0, minute=0, second=0)
 	temp_ranges = []
-	start_date_mdnght = start_datetime.replace(hour=0, minute=0, second=0)
 	for a, b in config.ABSENT_HOURS:
 		# Start from the day before the start of the simulation so we know
 		# what temperatures apply at t=0.
 		for day_num in range(-1, 2+int((end_t - start_t) / 24)):
 			time_a = start_date_mdnght + datetime.timedelta(days=day_num, hours=a)
 			time_b = start_date_mdnght + datetime.timedelta(days=day_num, hours=b)
-			t_a = (time_a - start_datetime) / datetime.timedelta(hours=1)
-			t_b = (time_b - start_datetime) / datetime.timedelta(hours=1)
+			t_a = (time_a.astimezone(UTC) - start_datetime_UTC) / hr
+			t_b = (time_b.astimezone(UTC) - start_datetime_UTC) / hr
 			temp_ranges.append((t_a, config.ABS_MIN_TEMP, config.ABS_MAX_TEMP))
 			temp_ranges.append((t_b, config.MIN_TEMP, config.MAX_TEMP))
 	return temp_ranges

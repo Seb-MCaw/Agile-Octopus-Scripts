@@ -20,6 +20,7 @@ import keras, keras.layers, keras.optimizers, keras.callbacks
 import tensorflow as tf
 
 import config
+import misc
 import data
 
 
@@ -141,14 +142,13 @@ def get_model_input(date, demand_data, wind_data, price_data):
 	data to construct the requested array.
 	"""
 	local_tz = zoneinfo.ZoneInfo(config.TIME_ZONE)
+	one_day = datetime.timedelta(days=1)
 	forecast_start = datetime.datetime.combine(
-		date - datetime.timedelta(days=1),
+		date - one_day,
 		datetime.time(23, 00, 00, tzinfo=local_tz)
 	)
-	prev_day_start = forecast_start - datetime.timedelta(hours=24)
-	all_settlmnt_prds = [
-		prev_day_start + datetime.timedelta(hours=i/2) for i in range(96)
-	]
+	prev_day_start = forecast_start.astimezone(datetime.timezone.utc) - one_day
+	all_settlmnt_prds = list(misc.datetime_sequence(prev_day_start, 0.5, 96))
 
 	# Assemble demand data
 	demand_vals = []
@@ -178,7 +178,7 @@ def get_model_input(date, demand_data, wind_data, price_data):
 		# settlement period
 		return None
 	# Calculate the date as a number of days since 2020-01-01
-	day_num = day_num = int(
+	day_num = int(
 		(date - datetime.date(2020, 1, 1))
 		/ datetime.timedelta(days=1)
 	)
@@ -212,9 +212,8 @@ def construct_output_array(date, price_data):
 		date - datetime.timedelta(days=1),
 		datetime.time(23, 00, 00, tzinfo=local_tz)
 	)
-	all_settlmnt_prds = [
-		forecast_start + datetime.timedelta(hours=i/2) for i in range(48)
-	]
+	forecast_start = forecast_start.astimezone(datetime.timezone.utc)
+	all_settlmnt_prds = misc.datetime_sequence(forecast_start, 0.5, 48)
 	prices = []
 	for ts in all_settlmnt_prds:
 		if ts in price_data:
@@ -269,7 +268,6 @@ def gen_price_forecast():
 	grid demand and wind generation forecasts, and that containing the Agile
 	Octopus prices.
 	"""
-	local_tz = zoneinfo.ZoneInfo(config.TIME_ZONE)
 	try:
 		model = keras.models.load_model(
 			os.path.join(config.DATA_DIRECTORY, config.FORECAST_MODEL_FILE),
@@ -282,6 +280,7 @@ def gen_price_forecast():
 		# No model file, so we can't produce any forecast
 		return {}
 	prices, demand, wind_gen = _get_data_from_csvs()
+	local_tz = zoneinfo.ZoneInfo(config.TIME_ZONE)
 	last_known_price_time = max(prices.keys()).astimezone(local_tz)
 	start = last_known_price_time.date()
 	end = min(max(demand.keys()), max(wind_gen.keys())).date()
@@ -307,19 +306,15 @@ def gen_price_forecast():
 			# changed since the model was trained), so terminate and return
 			# any forecast we've already managed to generate.
 			break
-		frcst_times = [
-			(
-				datetime.datetime.combine(
-					t - datetime.timedelta(days=1),
-					datetime.time(23, 00, tzinfo=local_tz)
-				)
-				+ datetime.timedelta(hours=i/2)
-			)
-			for i in range(48)
-		]
+		frcst_start_time = datetime.datetime.combine(
+			t - datetime.timedelta(days=1),
+			datetime.time(23, 00, tzinfo=local_tz)
+		).astimezone(datetime.timezone.utc)
+		frcst_times = list(misc.datetime_sequence(frcst_start_time, 0.5, 48))
 		# Handle daylight savings switchover
-		last_frcst_time = frcst_times[-1]
-		if last_frcst_time.hour == 22:
+		frcst_end_time = frcst_times[-1] + datetime.timedelta(minutes=30)
+		frcst_end_local_time = frcst_end_time.astimezone(local_tz)
+		if frcst_end_local_time.hour == 22:
 			# The clocks have gone back, so we need an extra hour of
 			# prices. There isn't enough data to train the model to handle
 			# this properly, so make a crude approximation by repeating
@@ -328,17 +323,17 @@ def gen_price_forecast():
 			frcst_prices.insert(6, frcst_prices[4])
 			frcst_prices.insert(7, frcst_prices[5])
 			frcst_times.extend([
-				last_frcst_time + datetime.timedelta(hours=0.5),
-				last_frcst_time + datetime.timedelta(hours=1)
+				frcst_end_time + datetime.timedelta(hours=0.5),
+				frcst_end_time + datetime.timedelta(hours=1)
 			])
-		elif last_frcst_time.hour == 00:
+		elif frcst_end_local_time.hour == 00:
 			# The clocks have gone forward, so 01:00 and 01:30 didn't happen.
 			# There isn't enough data to train the model to handle this
 			# properly, so make a crude approximation by simply removing
 			# the prices forecast for these times.
 			frcst_prices = frcst_prices[:4] + frcst_prices[6:]
 			frcst_times = frcst_times[:46]
-		elif last_frcst_time.hour != 23:
+		elif frcst_end_local_time.hour != 23:
 			# This shouldn't happen during a normal DST switchover
 			raise RuntimeError("Unexpected timezone behaviour")
 		# Then actually record the forecast

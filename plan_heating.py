@@ -9,6 +9,7 @@ The building and optimisation parameters are speecified in config.py.
 import datetime
 import warnings
 import re
+import zoneinfo
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -48,6 +49,8 @@ def heating_options(
 	  end_times         A collection of different times up to which acceptable
 	                    temperatures are to be maintained. The returned list
 	                    will contain one element corresponding to each.
+	                    All end_times must be naive if start_time is, otherwise
+	                    they must all be aware.
 	  prices            A sequence of the half-hourly unit prices (p/kWh) on
 	                    the Agile tariff. prices[0] should give the price
 	                    at t=init_vals[0].
@@ -59,11 +62,13 @@ def heating_options(
 	Returns a list containing, for each possibility, dictionaries with the
 	key-value pairs:
 	  "lasts_until"     The time when the temperature first actually becomes
-	                    unacceptable (as datetime.datetime).
+	                    unacceptable (as datetime.datetime; UTC or naive,
+	                    depending on start_time).
 	                    The returned list is sorted ascending on this value.
 	  "storage_heat"    A list of 2-tuples defining the time periods for which
 	                    the storage heaters should charge. Each specifies
-	                    non-overlapping (start, end) times as datetime.datetimes.
+	                    non-overlapping (start, end) times as datetime.datetimes
+	                    (all UTC).
 	  "direct_heat"     A list of 3-tuples defining the heating which should be
 	                    applied directly to the air in the building (via space
 	                    heaters etc). The first 2 elements of each specify a
@@ -85,6 +90,9 @@ def heating_options(
 	                    corresponding to "t".
 	"""
 	end_times = sorted(end_times)
+	if start_time.tzinfo is not None:
+		start_time = start_time.astimezone(datetime.timezone.utc)
+		end_times = [t.astimezone(datetime.timezone.utc) for t in end_times]
 	num_hours = (max(end_times) - start_time) / datetime.timedelta(hours=1)
 	if len(outdoor_temps) < num_hours + 1:
 		raise ValueError("Insufficient temperature data")
@@ -232,15 +240,24 @@ if __name__ == "__main__":
 	)
 	
 	# Print the summary and populate the plot
+	local_tz = zoneinfo.ZoneInfo(config.TIME_ZONE)
 	for i, opt in enumerate(options):
+		lasts_until = opt['lasts_until'].astimezone(local_tz)
 		lasts_in_days = (opt['lasts_until']-start_time) / datetime.timedelta(days=1)
 		costs_str = "" if i == 0 else "an additional "
 		sh_string = ", ".join([
-			f"{start.strftime('%H:%M')}--{end.strftime('%H:%M')}"
+			(
+				  f"{start.astimezone(local_tz).strftime('%H:%M')}--"
+				+ f"{end.astimezone(local_tz).strftime('%H:%M')}"
+			)
 			for start, end in opt["storage_heat"]
 		])
 		dh_string = ", ".join([
-			f"{pwr}kW for {start.strftime('%H:%M')}--{end.strftime('%H:%M')}"
+			(
+				  f"{pwr}kW for "
+				+ f"{start.astimezone(local_tz).strftime('%H:%M')}--"
+				+ f"{end.astimezone(local_tz).strftime('%H:%M')}"
+			)
 			for start, end, pwr in opt["direct_heat"]
 		])
 		if opt['marg_usfl_enrgy'] == 0:
@@ -248,7 +265,7 @@ if __name__ == "__main__":
 		else:
 			marg_usfl_enrgy = opt['marg_usfl_enrgy']
 		print(
-			  f"\nHeating until {opt['lasts_until'].strftime('%H:%M on %A')} "
+			  f"\nHeating until {lasts_until.strftime('%H:%M on %A')} "
 			+ f"({lasts_in_days:.2f} days):"
 			+ f"\n    Costs {costs_str}£{opt['marginal_price']/100:.2f} "
 			+ f"({opt['marginal_price'] / marg_usfl_enrgy:.2f}p "

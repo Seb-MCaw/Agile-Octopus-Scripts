@@ -32,7 +32,8 @@ def construct_forecast_model():
 	demand and wind generation at the time, but will also be affected by
 	wider factors that operate on day-long timescales (or longer).
 
-	It takes two separate inputs as provided by get_model_input().
+	It takes two separate inputs as provided by get_model_input(), and outputs
+	the prices for the 48 settlement periods of the day being forecast.
 	"""
 	# Prices should depend strongly on the contemporaneous demand and wind
 	# generation, and only weakly on all other inputs. As such, to reduce the
@@ -113,14 +114,14 @@ def get_model_input(date, demand_data, wind_data, price_data):
 	"""
 	Construct the appropriate inputs for the model to forecast a price.
 
-	Returns the two inputs (as lists) which should be used for the model to
+	Returns the two inputs (as arrays) which should be used for the model to
 	forecast the price for the given date (a datetime.date). Specifically, it
 	will forecast from 23:00 (local time) the day before date until 23:00 on
 	date.
 
 	The first input array is the concatenation of:
 	  - The national grid demand values (in GW) averaged over consecutive
-	    8-hour periods from 24 hours before the start of the forecast to
+	    2-hour periods from 24 hours before the start of the forecast to
 	    the end of the forecast.
 	  - The national grid wind generation values averaged over the same periods
 	  - The Agile Octopus prices averaged over the same periods up to the
@@ -273,7 +274,7 @@ def gen_price_forecast():
 			os.path.join(config.DATA_DIRECTORY, config.FORECAST_MODEL_FILE),
 			custom_objects={
 				"loss_func": loss_func,
-				"ParallelDenseLayer" : ParallelDenseLayer
+				"ParallelDenseLayer": ParallelDenseLayer
 			}
 		)
 	except (FileNotFoundError, OSError):
@@ -323,8 +324,8 @@ def gen_price_forecast():
 			frcst_prices.insert(6, frcst_prices[4])
 			frcst_prices.insert(7, frcst_prices[5])
 			frcst_times.extend([
-				frcst_end_time + datetime.timedelta(hours=0.5),
-				frcst_end_time + datetime.timedelta(hours=1)
+				frcst_end_time,                                 # 22:00
+				frcst_end_time + datetime.timedelta(hours=0.5)  # 22:30
 			])
 		elif frcst_end_local_time.hour == 00:
 			# The clocks have gone forward, so 01:00 and 01:30 didn't happen.

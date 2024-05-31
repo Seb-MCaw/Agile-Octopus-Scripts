@@ -192,8 +192,10 @@ def plot_prices(agile_prices, price_forecast=None, tom_min_max=False, format="pn
 		x_tick_interval = 24
 		x_tick_format = 15*" " + r"%Y-%m-%d" # (padded to left-align)
 		ax.set_xlim([-1, min(max_x, max(times_in_hrs))])
+		y_min = min(0, min(agile_prices) - 2, min(price_forecast.values()) - 2)
+		y_min = max(-25, y_min)  # Limit effect of excessively negative forecast
 		ax.set_ylim([
-			min(0, min(min(agile_prices), min(price_forecast.values())) - 2),
+			y_min,
 			max(max(agile_prices), max(price_forecast.values())) + 2
 		])
 	# Handle xticks (such that they occur at the same clock hours even when
@@ -275,11 +277,12 @@ def main():
 	price_forecast = price_forecasting.gen_price_forecast()
 
 	script_start_time = datetime.datetime.now()
-	date_str = script_start_time.strftime(r'%Y-%m-%d')
 
 	# Construct email body and subject
-	subj = f"Agile Octopus Bulletin ({date_str})"
-	email_body = f"""Agile Octopus Bulletin {date_str}
+	today = misc.midnight_tonight(local=True) - datetime.timedelta(days=1)
+	today_str = today.strftime(r'%Y-%m-%d')
+	subj = f"Agile Octopus Bulletin ({today_str})"
+	email_body = f"""Agile Octopus Bulletin {today_str}
 
 
 Consumption (excluding standing charge) as of 00:00 this morning:

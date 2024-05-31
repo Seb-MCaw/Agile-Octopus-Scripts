@@ -201,7 +201,7 @@ if __name__ == "__main__":
 
 	# Get temperature forecast
 	data.update_temperature_forecast()
-	outdoor_temps = list(data.get_hourly_temperatures(start_time))
+	outdoor_temps = data.get_hourly_temperatures(start_time)
 	# Prompt if temperature forecast isn't long enough
 	num_missing_temps = int(np.ceil(24*max(heat_lengths))) - len(outdoor_temps)
 	num_missing_temps += 1  # (fencepost)

@@ -213,7 +213,7 @@ class Building:
 		# switch-on and switch-off events, all changes in the minimum temperature
 		# and all hours and half-hours (since half-hourly usage is returned)
 		# between start_t and end_t.
-		step_boundaries = set(start_t + 0.5*np.array(range(2*int(end_t - start_t))))
+		step_boundaries = set(np.linspace(start_t, end_t, 1+2*(end_t-start_t)))
 		step_boundaries.update(np.array(storage_heat).flatten())
 		if direct_heat != "thermostat":
 			step_boundaries.update(np.array([x[:2] for x in direct_heat]).flatten())

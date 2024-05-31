@@ -55,11 +55,11 @@ def get_hourly_temperatures(start_time):
 	times = [(t - start_time)/datetime.timedelta(hours=1) for t in times]
 	# Linearly interpolate to get the approx temperatures at the desired hours
 	num_hours = int(times[-1])
-	return np.interp(
+	return list(np.interp(
 		np.linspace(0, num_hours, num_hours+1),
 		times,
 		temps
-	)
+	))
 
 def update_temperature_forecast():
 	"""

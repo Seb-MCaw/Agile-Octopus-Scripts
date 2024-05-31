@@ -16,7 +16,10 @@ def cheapest_window(length, prices):
 	"""
 	Find the time window of the specified length with the lowest average unit price.
 
-	Returns the start datetime of the window and its average price.
+	Later windows are preferred in the event of a tie.
+
+	Returns the start datetime of the window and its average price. Returns
+	None for both if prices contains no valid windows of the required length.
 
 	length must be a positive integer multiple of 0.5, specifying the length
 	of the window in hours.
@@ -24,10 +27,6 @@ def cheapest_window(length, prices):
 	prices should be a dictionary with the start of each settlement period
 	(timezone aware datetime.datetime) as keys and the corresponding unit
 	prices as values.
-
-	Returns None if prices contains no valid windows of the required length.
-
-	Later windows are preferred in the event of a tie.
 	"""
 	# Convert all times to UTC
 	arg_times = {t.astimezone(datetime.timezone.utc) : t for t in prices}
@@ -38,7 +37,7 @@ def cheapest_window(length, prices):
 	best_average_price = None
 	best_start_time = None
 	times = sorted(prices.keys())
-	for start_idx, start_time in enumerate(times[: -length]):
+	for start_idx, start_time in enumerate(times[: 1+len(times)-length]):
 		window_times = times[start_idx : start_idx + length]
 		no_gaps = all(
 			t_1 + datetime.timedelta(hours=0.5) == t_2
@@ -49,10 +48,9 @@ def cheapest_window(length, prices):
 			if best_average_price is None or avg_price <= best_average_price:
 				best_average_price = avg_price
 				best_start_time = start_time
-	return arg_times[best_start_time], best_average_price
-
-
-
+	if best_start_time is not None:
+		best_start_time = arg_times[best_start_time]
+	return best_start_time, best_average_price
 
 
 def temp_ranges_from_config(start_datetime, start_t, end_t):
@@ -77,8 +75,8 @@ def temp_ranges_from_config(start_datetime, start_t, end_t):
 		for day_num in range(-1, 2+int((end_t - start_t) / 24)):
 			time_a = start_date_mdnght + datetime.timedelta(days=day_num, hours=a)
 			time_b = start_date_mdnght + datetime.timedelta(days=day_num, hours=b)
-			t_a = (time_a.astimezone(UTC) - start_datetime_UTC) / hr
-			t_b = (time_b.astimezone(UTC) - start_datetime_UTC) / hr
+			t_a = start_t + (time_a.astimezone(UTC) - start_datetime_UTC) / hr
+			t_b = start_t + (time_b.astimezone(UTC) - start_datetime_UTC) / hr
 			temp_ranges.append((t_a, config.ABS_MIN_TEMP, config.ABS_MAX_TEMP))
 			temp_ranges.append((t_b, config.MIN_TEMP, config.MAX_TEMP))
 	return temp_ranges
@@ -252,10 +250,14 @@ def _first_deviation_from_acceptable(t, T, temp_ranges):
 	Returns last t value if all T values are acceptable.
 
 	temp_ranges must be sorted by t value ascending.
+
+	Ignores the T value(s) at the first t value (since floating point errors
+	etc. may result in an unacceptable initial temperature)
 	"""
 	min_temp, max_temp = temp_ranges[0][1:]
 	next_temp_range_idx = 1
-	for t_val, T_val in zip(t, T):
+	start_idx = next((a for a,b in enumerate(t) if b>t[0]), 0)
+	for t_val, T_val in zip(t[start_idx:], T[start_idx:]):
 		# Determine what temp_range applies to this t value
 		while (
 			next_temp_range_idx < len(temp_ranges)
@@ -292,10 +294,10 @@ def _energy_cost(prices, usage):
 	Throws exception if prices are unavailable for periods with non-zero
 	usage.
 	"""
-	l = min(len(prices), len(usage))
-	if np.max(usage[l:]) > 0:
+	n = min(len(prices), len(usage))
+	if len(usage) > n and np.max(usage[n:]) > 0:
 		raise ValueError("prices not available for all electricity use")
-	return np.dot(prices[:l], usage[:l])
+	return np.dot(prices[:n], usage[:n])
 
 def _sim_heat_args(arr, start_t, max_t, rounded=False):
 	"""

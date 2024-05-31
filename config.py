@@ -50,6 +50,9 @@ OCTOPUS_BILL_DAY = 1
 # The date on which the agile tariff started (for the "all time" total cost
 # calculation)
 OCTOPUS_AGILE_JOIN_DATE = "2018-02-21"
+
+# The product code for the tariff which should be used
+OCTOPUS_AGILE_PRODUCT_CODE = "AGILE-FLEX-22-11-25"
 # The letter code for the region whose tariff should be used
 OCTOPUS_AGILE_REGION_CODE = "A"
 

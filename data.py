@@ -242,9 +242,10 @@ def update_agile_prices(wait=True):
 	start_time = misc.midnight_tonight() - datetime.timedelta(hours=1)
 	period_from_str = start_time.strftime(r"%Y-%m-%dT%H:%M:%SZ")
 	api_request_url = (
-		"https://api.octopus.energy/v1/products/AGILE-FLEX-BB-23-02-08/"
-		+ "electricity-tariffs/"
-		+ f"E-1R-AGILE-FLEX-BB-23-02-08-{config.OCTOPUS_AGILE_REGION_CODE}/"
+		"https://api.octopus.energy/v1/products/"
+		+ f"{config.OCTOPUS_AGILE_PRODUCT_CODE}/electricity-tariffs/"
+		+ f"E-1R-{config.OCTOPUS_AGILE_PRODUCT_CODE}-"
+		+ f"{config.OCTOPUS_AGILE_REGION_CODE}/"
 		+ f"standard-unit-rates?period_from={period_from_str}"
 	)
 	response = json.loads(urllib.request.urlopen(api_request_url).read())
@@ -325,8 +326,9 @@ def get_actual_spend(start, end):
 		url = response["next"]
 	# Get prices for the same period
 	url = (
-		"https://api.octopus.energy/v1/products/AGILE-FLEX-BB-23-02-08/"
-		+ f"electricity-tariffs/E-1R-AGILE-FLEX-BB-23-02-08-"
+		"https://api.octopus.energy/v1/products/"
+		+ f"{config.OCTOPUS_AGILE_PRODUCT_CODE}/electricity-tariffs/"
+		+ f"E-1R-{config.OCTOPUS_AGILE_PRODUCT_CODE}-"
 		+ f"{config.OCTOPUS_AGILE_REGION_CODE}/standard-unit-rates"
 		+ f"?page_size=1500&period_from={start.strftime(r'%Y-%m-%dT%H:%MZ')}"
 		+ f"&period_to={end.strftime(r'%Y-%m-%dT%H:%MZ')}"

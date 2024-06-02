@@ -183,7 +183,7 @@ def heating_options(
 
 
 
-if __name__ == "__main__":
+def main():
 	initial_indoor_temp = float(input(
 		"Enter initial indoor temperature (\N{DEGREE SIGN}C):" + 22 * " "
 	))
@@ -191,7 +191,7 @@ if __name__ == "__main__":
 		"Times to heat until (days after 00:00 tonight):             "
 	)
 	heat_lengths = [
-		float(l) for l in re.split(r"[^0-9]+", heat_lengths)
+		float(l) for l in re.split(r"[^0-9.]+", heat_lengths)
 		if l != ""
 	]
 	max_num_heats = int(input(
@@ -287,3 +287,8 @@ if __name__ == "__main__":
 	plt.show()
 
 	print()
+
+
+
+if __name__ == "__main__":
+	main()

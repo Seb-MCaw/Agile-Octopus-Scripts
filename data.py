@@ -362,9 +362,6 @@ def append_csv(file_path, new_rows, field_names, unique_field=None, overwrite_du
 	"""
 	Append rows to an existing csv file.
 
-	Returns a list containing all rows in the resulting csv file as dictionaries
-	with the field names as keys.
-
 	new_rows is an iterable of lists, each sublist representing a row as a list
 	of values. Values will be converted to strings if necessary. Rows will be
 	appended in the order they appear in new_rows.

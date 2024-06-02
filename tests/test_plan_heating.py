@@ -89,7 +89,7 @@ class TestHeatingOptions(unittest.TestCase):
 		self.assertEqual(
 			options[0],
 			{
-				"lasts_until": end_t_1,
+				"lasts_until": end_t_1.astimezone(utc),
 				"storage_heat": [
 					(
 						datetime.datetime(2020,10,24,22,00, tzinfo=utc),
@@ -116,7 +116,7 @@ class TestHeatingOptions(unittest.TestCase):
 		self.assertEqual(
 			options[1],
 			{
-				"lasts_until": end_t_2,
+				"lasts_until": end_t_2.astimezone(utc),
 				"storage_heat": [
 					(
 						datetime.datetime(2020,10,24,22,00, tzinfo=utc),

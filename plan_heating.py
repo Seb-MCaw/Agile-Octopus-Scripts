@@ -280,12 +280,11 @@ def main():
 			label=f"{lasts_in_days:.2f} days"
 		)
 
-	# Finish and show the plot
+	# Show the plot and finish
 	plt.xlabel("Time (hrs after midnight tonight)")
 	plt.ylabel("Temperature (\N{DEGREE SIGN}C)")
 	plt.legend()
 	plt.show()
-
 	print()
 
 

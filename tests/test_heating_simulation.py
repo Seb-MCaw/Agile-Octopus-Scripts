@@ -210,6 +210,24 @@ class TestSimulation(unittest.TestCase):
 		self.assertAlmostEqual(S[-1], 50, 1)
 		self.assertAlmostEqual(sum(usage), .89, 2)
 
+	def test_storage_heat_leakage(self):
+		"""
+		Check storage heater leaks appropriately when on verge of discharging.
+		"""
+		t, T, Q, S, usage = self.b.simulate_heat(
+			init_vals=(0, 20, 20, 50),
+			storage_heat=[],
+			direct_heat=[],
+			other_heat=[],
+			outdoor_temps=[20]*2,
+			min_temps=[(0, 20)]
+		)
+		self.assertEqual(t[-1], 1)
+		self.assertLess(T[-1], 20.2)
+		self.assertLess(Q[-1], 20.01)
+		self.assertAlmostEqual(S[-1], 49.26, 2)
+		self.assertEqual(sum(usage), 0)
+
 	def test_min_temp_changes(self):
 		"""
 		Check storage heater discharge responds to changes in min_temp

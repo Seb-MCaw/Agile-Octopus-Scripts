@@ -32,12 +32,12 @@ Once T <= min_temp, the regime changes, and T is held at exactly min_temp
 while the storage heater's temperature obeys
    C_sh S'(t) = k(A(t) - T(t)) + h(Q(t) - T(t)) + P(t) + I(t)           (3)
 (since all heat lost from indoors is replenished by the storage heater)
-unless/until S <= T, or the RHS minus I(t) is positive.
+unless or until either S <= T, or the RHS of eq (1) is positive.
 
 When S == T and T <= min_temp, both S and T follow the equation
    (C_sh + C) T'(t) = k(A(t) - T(t)) + h(Q(t) - T(t)) + P(t) + I(t)     (4)
-unless/until the value of T'(t) given by eq (1) is greater than that given
-by this equation.
+unless or until the value of T'(t) given by eq (1) is greater than that
+given by this equation.
 
 
 At all times, the slow-responding part of the property obeys
@@ -376,12 +376,11 @@ class Building:
 			+ j * (initial_S - initial_T)
 			+ P
 		)
-		eq3_initial_RHS = (
+		eq4_initial_RHS = (
 			self.k*(outdoor_temps[0] - initial_T)
 			+ self.h*(initial_Q - initial_T)
 			+ P + I
 		)
-		eq4_initial_RHS = eq3_initial_RHS
 		if thstat and initial_S <= initial_T <= min_temp and eq1_initial_RHS <= 0:
 			# thstat is True, and T will drop below min_temp if we don't
 			# add more heat.
@@ -437,7 +436,7 @@ class Building:
 			# step. Otherwise just return the full simulated temperatures.
 			termination_condition = T > min_temp
 
-		elif initial_T <= min_temp and initial_T < initial_S and eq3_initial_RHS - I <= 0:
+		elif initial_T <= min_temp and initial_T < initial_S and eq1_initial_RHS <= 0:
 			assert initial_T == min_temp
 			# Use the storage heater to maintain min_temp for as long as possible.
 			T, Q, S = self._solve_eqns(t_vals, init_vals, "discharging", U, V, P, I)
@@ -446,8 +445,14 @@ class Building:
 			# increase T, terminate this step at that time and (recursively) treat
 			# the remainder of the t_interval as a new step.
 			# Otherwise just return the full simulated temperatures.
-			eq3_RHS = self.k * ((U + V*t_vals) - min_temp) + self.h * (Q - min_temp) + P + I
-			termination_condition = np.logical_or(S < min_temp, eq3_RHS - I > 0)
+			A = U + V*t_vals
+			eq1_RHS = (
+				  self.k * (A - min_temp)
+				+ self.h * (Q - min_temp)
+				+ j * (S - min_temp)
+				+ P
+			)
+			termination_condition = np.logical_or(S <= min_temp, eq1_RHS > 0)
 
 		else:
 			# It is either unnecessary or impossible to output heat from the
@@ -456,19 +461,19 @@ class Building:
 			T, Q, S = self._solve_eqns(t_vals, init_vals, rgme, U, V, P, I)
 			# The step should be terminated early if any of the three above
 			# regimes are entered.
+			A = U + V*t_vals
 			eq1_RHS = (
-				self.k*(np.interp(t_vals, t_interval, outdoor_temps) - initial_T)
+				  self.k*(A - T)
 				+ self.h*(Q - T)
 				+ j * (S - T)
 				+ P
 			)
-			eq3_RHS = self.k * ((U + V*t_vals) - T) + self.h * (Q - T) + P + I
-			eq4_RHS = eq3_RHS
+			eq4_RHS = self.k * ((U + V*t_vals) - T) + self.h * (Q - T) + P + I
 			termination_condition = np.logical_or(
 				np.logical_and(
 					T <= min_temp,
 					np.logical_or(
-						np.logical_and(T < S, eq3_RHS - I <= 0),
+						np.logical_and(T < S, eq1_RHS <= 0),
 						np.logical_and(
 							eq4_RHS/(self.C_sh+self.C) >= (eq4_RHS-I)/self.C,
 							T == S

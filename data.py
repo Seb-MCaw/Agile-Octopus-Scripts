@@ -387,7 +387,7 @@ def append_csv(file_path, new_rows, field_names, unique_field=None, overwrite_du
 	new_rows = [{k:v for k,v in zip(field_names, row)} for row in new_rows]
 	# Read any data already in the file
 	try:
-		with open(file_path, "r", newline="") as f:
+		with open(file_path, "r", newline="", encoding="utf-8") as f:
 			csv_reader = csv.DictReader(f, delimiter=",")
 			prev_rows = [row for row in csv_reader]
 			prev_field_names = csv_reader.fieldnames
@@ -416,7 +416,7 @@ def append_csv(file_path, new_rows, field_names, unique_field=None, overwrite_du
 		for row in (prev_rows + new_rows)
 	]
 	# Write the new data to the file
-	with open(file_path, "w", newline="") as f:
+	with open(file_path, "w", newline="", encoding="utf-8") as f:
 		csv_writer = csv.DictWriter(f, all_field_names, delimiter=",")
 		csv_writer.writeheader()
 		csv_writer.writerows(rows)
@@ -436,7 +436,7 @@ def load_csv_time_series(file_path, time_col, val_col, time_format=r"%Y-%m-%dT%H
 	returned dictionary will contain only one.
 	"""
 	time_series = {}
-	with open(file_path, "r", newline="") as f:
+	with open(file_path, "r", newline="", encoding="utf-8") as f:
 		csv_reader = csv.DictReader(f, delimiter=",")
 		for row in csv_reader:
 			t = datetime.datetime.strptime(

@@ -874,11 +874,11 @@ class TestAppendCSV(unittest.TestCase):
 		self.assertEqual(len(self.mock_open.call_args_list), 2)
 		self.assertEqual(
 			self.mock_open.call_args_list[0],
-			unittest.mock.call("file_path", "r", newline="")
+			unittest.mock.call("file_path", "r", newline="", encoding="utf-8")
 		)
 		self.assertEqual(
 			self.mock_open.call_args_list[1],
-			unittest.mock.call("file_path", "w", newline="")
+			unittest.mock.call("file_path", "w", newline="", encoding="utf-8")
 		)
 		self.assertEqual(
 			self.mock_writer.getvalue(),
@@ -904,11 +904,11 @@ class TestAppendCSV(unittest.TestCase):
 		self.assertEqual(len(self.mock_open.call_args_list), 2)
 		self.assertEqual(
 			self.mock_open.call_args_list[0],
-			unittest.mock.call("file_path", "r", newline="")
+			unittest.mock.call("file_path", "r", newline="", encoding="utf-8")
 		)
 		self.assertEqual(
 			self.mock_open.call_args_list[1],
-			unittest.mock.call("file_path", "w", newline="")
+			unittest.mock.call("file_path", "w", newline="", encoding="utf-8")
 		)
 		self.assertEqual(
 			self.mock_writer.getvalue(),
@@ -934,11 +934,11 @@ class TestAppendCSV(unittest.TestCase):
 		self.assertEqual(len(self.mock_open.call_args_list), 2)
 		self.assertEqual(
 			self.mock_open.call_args_list[0],
-			unittest.mock.call("file_path", "r", newline="")
+			unittest.mock.call("file_path", "r", newline="", encoding="utf-8")
 		)
 		self.assertEqual(
 			self.mock_open.call_args_list[1],
-			unittest.mock.call("file_path", "w", newline="")
+			unittest.mock.call("file_path", "w", newline="", encoding="utf-8")
 		)
 		self.assertEqual(
 			self.mock_writer.getvalue(),
@@ -968,11 +968,11 @@ class TestAppendCSV(unittest.TestCase):
 		self.assertEqual(len(mock_open.call_args_list), 2)
 		self.assertEqual(
 			mock_open.call_args_list[0],
-			unittest.mock.call("file_path", "r", newline="")
+			unittest.mock.call("file_path", "r", newline="", encoding="utf-8")
 		)
 		self.assertEqual(
 			mock_open.call_args_list[1],
-			unittest.mock.call("file_path", "w", newline="")
+			unittest.mock.call("file_path", "w", newline="", encoding="utf-8")
 		)
 		self.assertEqual(
 			mock_writer.getvalue(),
@@ -1003,4 +1003,6 @@ class TestCSVTimeSeries(unittest.TestCase):
 					datetime.datetime(2020,1,1,1,30,tzinfo=utc): "10",
 				}
 			)
-		mock_open.assert_called_once_with("file_path", "r", newline="")
+		mock_open.assert_called_once_with(
+			"file_path", "r", newline="", encoding="utf-8"
+		)

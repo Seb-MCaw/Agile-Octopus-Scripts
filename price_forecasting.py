@@ -44,25 +44,28 @@ def construct_forecast_model():
 	# The branch which mixes all values together:
 	mixed_branch_inp = keras.Input((62,))
 	# Dense layers with final output duplicated to give shape (48, 4)
-	mixed_branch_0 = keras.layers.Dense(32, activation="PReLU")(mixed_branch_inp)
-	mixed_branch_1 = keras.layers.Dense(16, activation="PReLU")(mixed_branch_0)
-	mixed_branch_2 = keras.layers.Dense(8, activation="PReLU")(mixed_branch_1)
-	mixed_branch_3 = keras.layers.RepeatVector(48)(mixed_branch_2)
+	mixed_branch_0 = keras.layers.Dense(32)(mixed_branch_inp)
+	mixed_branch_0_act = keras.layers.PReLU()(mixed_branch_0)
+	mixed_branch_1 = keras.layers.Dense(16)(mixed_branch_0_act)
+	mixed_branch_1_act = keras.layers.PReLU()(mixed_branch_1)
+	mixed_branch_2 = keras.layers.Dense(8)(mixed_branch_1_act)
+	mixed_branch_2_act = keras.layers.PReLU()(mixed_branch_2)
+	mixed_branch_3 = keras.layers.RepeatVector(48)(mixed_branch_2_act)
 
 	# The branch which keeps times separate (matrix multiplication only on
 	# second axis):
 	unmxd_branch_inp = keras.Input((48, 2))
 	unmxd_branch_0 = keras.layers.Dense(8)(unmxd_branch_inp)
-	unmxd_branch_1 = keras.layers.Activation("PReLU")(unmxd_branch_0)
+	unmxd_branch_1 = keras.layers.PReLU()(unmxd_branch_0)
 	unmxd_branch_2 = keras.layers.Dense(4)(unmxd_branch_1)
-	unmxd_branch_3 = keras.layers.Activation("PReLU")(unmxd_branch_2)
+	unmxd_branch_3 = keras.layers.PReLU()(unmxd_branch_2)
 
 	# Combine the two branches to produce the output
 	cmbnd_0 = keras.layers.Concatenate()([mixed_branch_3, unmxd_branch_3])
 	cmbnd_1 = ParallelDenseLayer(48, 12, 8)(cmbnd_0)
-	cmbnd_2 = keras.layers.Activation("PReLU")(cmbnd_1)
+	cmbnd_2 = keras.layers.PReLU()(cmbnd_1)
 	cmbnd_3 = ParallelDenseLayer(48, 8, 8)(cmbnd_2)
-	cmbnd_4 = keras.layers.Activation("PReLU")(cmbnd_3)
+	cmbnd_4 = keras.layers.PReLU()(cmbnd_3)
 	cmbnd_5 = ParallelDenseLayer(48, 8, 1)(cmbnd_4)
 	output = keras.layers.Flatten()(cmbnd_5)
 

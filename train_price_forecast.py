@@ -140,7 +140,7 @@ if __name__ == "__main__":
 				"ParallelDenseLayer" : price_forecasting.ParallelDenseLayer
 			}
 		)
-	except OSError:
+	except (OSError, ValueError):
 		save_requested = True
 	else:
 		try:

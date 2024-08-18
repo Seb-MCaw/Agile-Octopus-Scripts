@@ -217,7 +217,7 @@ def plot_prices(agile_prices, price_forecast=None, tom_min_max=False, format="pn
 		x_tick_labels[-1] = ""
 	ax.set_xticks(
 		x_tick_hrs,
-		x_tick_labels
+		labels=x_tick_labels
 	)
 	# Show tomorrows min and max if tom_min_max is True
 	if tom_min_max:

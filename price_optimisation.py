@@ -280,7 +280,11 @@ def _first_deviation_from_acceptable(t, T, temp_ranges):
 				temp_ranges[next_temp_range_idx][2]
 			)
 		# Check if the T value is acceptable
-		if not (min_temp <= T_val <= max_temp):
+		if not (
+			min_temp <= T_val <= max_temp
+			or np.isclose(min_temp, T_val)
+			or np.isclose(max_temp, T_val)
+		):
 			# This T value is unacceptable
 			return t_val
 	# All T values are acceptable

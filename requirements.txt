@@ -1,0 +1,5 @@
+numpy ~= 1.23
+scipy >= 1.9.2, == 1.*
+matplotlib ~= 3.5
+tensorflow ~= 2.13
+keras >= 2.13.1, < 4.0
